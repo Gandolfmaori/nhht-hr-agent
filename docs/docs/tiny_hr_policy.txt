@@ -1,0 +1,4 @@
+Lateness Policy:
+All employees must arrive on time for their scheduled shifts.
+If an employee is late three times within one month, a meeting with their manager will be arranged to discuss support options and expectations.
+Consistent lateness without improvement may result in formal performance management steps.
