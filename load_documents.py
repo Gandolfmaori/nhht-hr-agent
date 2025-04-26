@@ -17,28 +17,22 @@ def load_documents():
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     docs = text_splitter.split_documents(documents)
 
+    texts = [doc.page_content for doc in docs]
+
     # Setup embeddings
-    embeddings = OpenAIEmbeddings(
+    embeddings_model = OpenAIEmbeddings(
         model="text-embedding-ada-002",
         openai_api_key=os.getenv("OPENAI_API_KEY")
     )
 
-    # New: Batch and sleep to avoid rate limits
-    batch_size = 10  # Embed 10 documents at a time
-    embedded_vectors = []
+    # Embed documents manually, in batches
+    batch_size = 10
+    all_embeddings = []
+    for i in range(0, len(texts), batch_size):
+        batch = texts[i:i + batch_size]
+        embeddings = embeddings_model.embed_documents(batch)
+        all_embeddings.extend(embeddings)
+        time.sleep(1)  # Sleep to avoid OpenAI rate limits
 
-    for i in range(0, len(docs), batch_size):
-        batch = docs[i:i + batch_size]
-        try:
-            vectors = embeddings.embed_documents([doc.page_content for doc in batch])
-            embedded_vectors.extend(vectors)
-            time.sleep(2)  # Pause 2 seconds between batches
-        except Exception as e:
-            print(f"Embedding batch failed: {e}")
-            time.sleep(10)  # Wait longer if OpenAI complains, then continue
-
-    # Now store into FAISS
-    vectordb = FAISS.from_texts(
-        [doc.page_content for doc in docs],
-        embedding=embeddings
-    )
+    # Build FAISS index manually (NO re-embedding now!)
+    vectordb = FAISS.from_embeddings(all_embeddings, texts)
