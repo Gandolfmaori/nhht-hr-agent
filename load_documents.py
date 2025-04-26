@@ -11,7 +11,6 @@ vectordb = None
 def load_documents():
     global vectordb
 
-    # Load documents
     loader = DirectoryLoader("docs", glob="**/*.txt", loader_cls=TextLoader)
     documents = loader.load()
 
@@ -20,7 +19,6 @@ def load_documents():
 
     texts = [doc.page_content for doc in docs]
 
-    # Setup embeddings
     embeddings_model = OpenAIEmbeddings(
         model="text-embedding-ada-002",
         openai_api_key=os.getenv("OPENAI_API_KEY")
@@ -28,20 +26,20 @@ def load_documents():
 
     all_embeddings = []
 
-    batch_size = 5  # Reduce batch size to 5
+    batch_size = 1  # Only 1 text at a time!
     i = 0
     while i < len(texts):
         batch = texts[i:i + batch_size]
         try:
             embeddings = embeddings_model.embed_documents(batch)
             all_embeddings.extend(embeddings)
-            i += batch_size  # Move to next batch
-            time.sleep(2)  # Sleep after each successful batch
+            i += batch_size
+            time.sleep(1)  # tiny pause after success
         except RateLimitError:
-            print("Rate limit hit! Sleeping 20 seconds before retrying...")
-            time.sleep(20)  # Exponential backoff
+            print("Rate limit hit! Sleeping 10 seconds before retrying...")
+            time.sleep(10)  # faster retry
         except Exception as e:
             print(f"Embedding batch failed: {e}")
-            time.sleep(10)  # Generic error pause
+            time.sleep(5)  # fast recovery
 
     vectordb = FAISS.from_embeddings(all_embeddings, texts)
