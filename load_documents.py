@@ -4,6 +4,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from openai import RateLimitError
 
 vectordb = None
 
@@ -25,14 +26,22 @@ def load_documents():
         openai_api_key=os.getenv("OPENAI_API_KEY")
     )
 
-    # Embed documents manually, in batches
-    batch_size = 10
     all_embeddings = []
-    for i in range(0, len(texts), batch_size):
-        batch = texts[i:i + batch_size]
-        embeddings = embeddings_model.embed_documents(batch)
-        all_embeddings.extend(embeddings)
-        time.sleep(1)  # Sleep to avoid OpenAI rate limits
 
-    # Build FAISS index manually (NO re-embedding now!)
+    batch_size = 5  # Reduce batch size to 5
+    i = 0
+    while i < len(texts):
+        batch = texts[i:i + batch_size]
+        try:
+            embeddings = embeddings_model.embed_documents(batch)
+            all_embeddings.extend(embeddings)
+            i += batch_size  # Move to next batch
+            time.sleep(2)  # Sleep after each successful batch
+        except RateLimitError:
+            print("Rate limit hit! Sleeping 20 seconds before retrying...")
+            time.sleep(20)  # Exponential backoff
+        except Exception as e:
+            print(f"Embedding batch failed: {e}")
+            time.sleep(10)  # Generic error pause
+
     vectordb = FAISS.from_embeddings(all_embeddings, texts)
