@@ -1,6 +1,6 @@
 import os
 from langchain.vectorstores import FAISS
-from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain_community.embeddings.openai import OpenAIEmbeddings
 from langchain.document_loaders import DirectoryLoader, TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
@@ -16,5 +16,10 @@ def load_documents():
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
     docs = text_splitter.split_documents(documents)
 
-    # Use FAISS instead of Chroma
-    vectordb = FAISS.from_documents(docs, embedding=OpenAIEmbeddings())
+    # Explicitly define the OpenAI Embedding model
+    embeddings = OpenAIEmbeddings(
+        model="text-embedding-ada-002",  # Standard OpenAI embedding model
+        openai_api_key=os.getenv("OPENAI_API_KEY")
+    )
+
+    vectordb = FAISS.from_documents(docs, embedding=embeddings)
